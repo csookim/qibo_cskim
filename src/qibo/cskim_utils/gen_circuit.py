@@ -13,7 +13,7 @@ def random_cx_circuit_qiskit(n_qubits, n_cxs):
     """
     Generates a random control Qiskit circuit with n_qubits qubits and n_cxs control gates.
     """
-    qc = None # QuantumCircuit(n_qubits)
+    qc = QuantumCircuit(n_qubits)
 
     for _ in range(n_cxs):
         qubit1 = random.randint(0, n_qubits - 1)

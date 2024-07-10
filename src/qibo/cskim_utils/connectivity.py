@@ -12,6 +12,18 @@ def star_connectivity():
     chip.add_edges_from(graph_list)
     return chip
 
+def star_connectivity_cmap():
+    """
+    Returns a star graph with 5 nodes and 4 edges.
+    """
+    Q = [i for i in range(5)]
+    chip = nx.Graph()
+    chip.add_nodes_from(Q)
+    graph_list = [[Q[i], Q[2]] for i in range(5) if i != 2]
+    graph_list_rev = [[Q[2], Q[i]] for i in range(5) if i != 2]
+    graph_list.extend(graph_list_rev)
+    return graph_list
+
 def cycle_connectivity_nx(n):
     """
     Returns a cycle graph with n nodes and n edges.
