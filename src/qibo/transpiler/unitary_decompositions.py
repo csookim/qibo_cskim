@@ -330,7 +330,7 @@ def two_qubit_decomposition(q0, q1, unitary, backend=None):
     return gatelist
 
 ### for transpiler.blocks.kak_decompose
-def orth_decomp_of_unitary(X):
+def orthogonal_decomposition_of_unitary(X):
     """Decomposes unitary X = Ql @ exp(i Theta) @ Qr'
     into orthogonal matrices Ql, Qr and angles Theta.
 
