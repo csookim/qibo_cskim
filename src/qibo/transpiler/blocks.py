@@ -99,7 +99,7 @@ class Block:
         return True
 
     # Make a Circuit object and obtain the unitary by running the circuit
-    def unitary(self):
+    def _unitary(self):
         """Return the unitary matrix of the block."""
         circuit = Circuit(2)
         for gate in self.gates:
