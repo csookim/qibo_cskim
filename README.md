@@ -6,7 +6,7 @@ This repository contains the tasks of Changsoo Kim during his internship with Qi
 
 ### Issues
 
-#### Issue #3
+#### Issue [#3](https://github.com/csookim/qibo_transpiler_cskim/issues/3)
 
 - For QFT(10), the average number of CZ gates is similar, but the minimum number of CZ gates is smaller when using Qiskit SABRE.
 - For random CZ circuits, both the average and minimum number of CZ gates are smaller when using Qiskit SABRE.
@@ -14,13 +14,13 @@ This repository contains the tasks of Changsoo Kim during his internship with Qi
 
 - This indicates that Qiskit SABRE has the potential to generate routings with fewer CZ gates.
 
-#### Issue #4
+#### Issue [#4](https://github.com/csookim/qibo_transpiler_cskim/issues/4)
 
 For QFT(5) + Cycle, Shortestpath has fewer CNOTs than SABRE. Shortestpath has the potential to generate routings with fewer CZ gates in 5-qubit circuits.
 
 ## Improve KAK
 
-#### Based on #20
+#### Issue [#20](https://github.com/csookim/qibo_transpiler_cskim/issues/20)
 
 - The matrix reassembled after the KAK decomposition is different from the original matrix when using Identity and CNOT matrices.
 
