@@ -8,13 +8,16 @@ This repository contains the tasks of Changsoo Kim during his internship with Qi
 
 #### Issue [#3](https://github.com/csookim/qibo_transpiler_cskim/issues/3)
 
+> [Notebook](https://github.com/csookim/qibo_transpiler_cskim/blob/master/cskim/docs/transpiler_general/3_sabre_qiskit_qibo.ipynb)
+
 - For QFT(10), the average number of CZ gates is similar, but the minimum number of CZ gates is smaller when using Qiskit SABRE.
 - For random CZ circuits, both the average and minimum number of CZ gates are smaller when using Qiskit SABRE.
 - Qiskit shows more fluctuation.
-
 - This indicates that Qiskit SABRE has the potential to generate routings with fewer CZ gates.
 
 #### Issue [#4](https://github.com/csookim/qibo_transpiler_cskim/issues/4)
+
+> [Notebook](https://github.com/csookim/qibo_transpiler_cskim/blob/master/cskim/docs/transpiler_general/4_shortestpath_sabre.ipynb)
 
 - For QFT(5) + Cycle, Shortestpath has fewer CNOTs than SABRE. Shortestpath has the potential to generate routings with fewer CZ gates in 5-qubit circuits.
 
