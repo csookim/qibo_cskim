@@ -16,7 +16,7 @@ This repository contains the tasks of Changsoo Kim during his internship with Qi
 
 #### Issue [#4](https://github.com/csookim/qibo_transpiler_cskim/issues/4)
 
-For QFT(5) + Cycle, Shortestpath has fewer CNOTs than SABRE. Shortestpath has the potential to generate routings with fewer CZ gates in 5-qubit circuits.
+- For QFT(5) + Cycle, Shortestpath has fewer CNOTs than SABRE. Shortestpath has the potential to generate routings with fewer CZ gates in 5-qubit circuits.
 
 ## Improve KAK
 
