@@ -25,6 +25,10 @@ class Block:
         self.gates = gates
         self.name = name
 
+        # Cache the unitary matrix of the block
+        self.unitary = None
+
+    
     @property
     def entangled(self):
         """Returns ``True`` if the block contains two-qubit gates."""
@@ -98,13 +102,16 @@ class Block:
             return False
         return True
 
-    # Make a Circuit object and obtain the unitary by running the circuit
     def _unitary(self):
-        """Return the unitary matrix of the block."""
-        circuit = Circuit(2)
-        for gate in self.gates:
-            circuit.add(gate)
-        return circuit.unitary()
+        """Return the unitary matrix of the block.
+        Make a Circuit object and obtain the unitary by casting the circuit into the corresponding unitary matrix.
+        """
+        if self.unitary is None:
+            circuit = Circuit(2)
+            for gate in self.gates:
+                circuit.add(gate)
+            self.unitary = circuit.unitary()
+        return self.unitary
 
     def kak_decompose(self): 
         """Return the KAK decomposition of the block.
