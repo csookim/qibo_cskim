@@ -20,7 +20,7 @@ def test_block_kak(qubits):
     )
 
     # Obtain the unitary matrix of the block
-    U = block.unitary()
+    U = block._unitary()
 
     # Perform the KAK decomposition
     A0, A1, K, B0, B1 = block.kak_decompose()
