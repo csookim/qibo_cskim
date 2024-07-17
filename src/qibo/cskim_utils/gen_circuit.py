@@ -76,7 +76,7 @@ def qft_rotations(circuit, n):
         return circuit
     n -= 1
     circuit.h(n)
-    for qubit in range(n):
+    for qubit in range(n)[::-1]:
         circuit.cp(np.pi/2**(n-qubit), qubit, n)
     qft_rotations(circuit, n)
 
