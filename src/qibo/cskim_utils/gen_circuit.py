@@ -98,3 +98,10 @@ def qiskit_qft(n):
     qft(qc, n)
     qc = qc.reverse_bits()
     return qc
+
+def qibo_to_qiskit_cz(circuit):
+    qiskit_circuit = QuantumCircuit(circuit.nqubits)
+    for gate in circuit.queue:
+        if isinstance(gate, gates.CZ):
+            qiskit_circuit.cz(gate.qubits[0], gate.qubits[1])
+    return qiskit_circuit
