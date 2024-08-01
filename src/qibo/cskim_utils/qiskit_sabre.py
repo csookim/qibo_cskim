@@ -19,6 +19,7 @@ from copy import copy, deepcopy
 import numpy as np
 # import retworkx
 import networkx
+import time
 
 from qiskit.circuit.library.standard_gates import SwapGate
 from qiskit.transpiler.basepasses import TransformationPass
@@ -176,6 +177,7 @@ class SabreSwap_old(TransformationPass):
 
         rng = np.random.default_rng(self.seed)
 
+        time_preprocessing = time.time()
         # Preserve input DAG's name, regs, wire_map, etc. but replace the graph.
         mapped_dag = None
         if not self.fake_run:
@@ -194,10 +196,15 @@ class SabreSwap_old(TransformationPass):
         self.required_predecessors = self._build_required_predecessors(dag)
         num_search_steps = 0
         front_layer = dag.front_layer()
+        print("Time preprocessing: ", time.time() - time_preprocessing)
+
+        # loop_count = [0, 0]
+        loop_time = [0, 0, 0]
 
         while front_layer:
             execute_gate_list = []
 
+            time_check_execute = time.time()
             # Remove as many immediately applicable gates as possible
             new_front_layer = []
             for node in front_layer:
@@ -214,9 +221,12 @@ class SabreSwap_old(TransformationPass):
                 else:  # Single-qubit gates as well as barriers are free
                     execute_gate_list.append(node)
             front_layer = new_front_layer
+            # print("Time check execute: ", time.time() - time_check_execute)
+            loop_time[2] += time.time() - time_check_execute
 
             if not execute_gate_list and len(ops_since_progress) > max_iterations_without_progress:
                 self._reset_count += 1
+                print("reset")
                 # Backtrack to the last time we made progress, then greedily insert swaps to route
                 # the gate with the smallest distance between its arguments.  This is a release
                 # valve for the algorithm to avoid infinite loops only, and should generally not
@@ -226,6 +236,7 @@ class SabreSwap_old(TransformationPass):
                 continue
 
             if execute_gate_list:
+                time_execute_blocks = time.time()
                 for node in execute_gate_list:
                     self._apply_gate(mapped_dag, node, current_layout, canonical_register)
                     for successor in self._successors(node, dag):
@@ -255,8 +266,13 @@ class SabreSwap_old(TransformationPass):
 
                 ops_since_progress = []
                 extended_set = None
+
+                # loop_count[0] += 1
+                loop_time[0] += time.time() - time_execute_blocks
+                # print("Time execute blocks: ", time.time() - time_execute_blocks)
                 continue
 
+            time_find_new_mapping = time.time()
             # After all free gates are exhausted, heuristically find
             # the best swap and insert it. When two or more swaps tie
             # for best score, pick one randomly.
@@ -290,6 +306,10 @@ class SabreSwap_old(TransformationPass):
                 self.qubits_decay[best_swap[0]] += DECAY_RATE
                 self.qubits_decay[best_swap[1]] += DECAY_RATE
 
+            # print("Time find new mapping: ", time.time() - time_find_new_mapping)
+            # loop_count[1] += 1
+            loop_time[1] += time.time() - time_find_new_mapping
+
             # Diagnostics
             if do_expensive_logging:
                 logger.debug("SWAP Selection...")
@@ -297,6 +317,10 @@ class SabreSwap_old(TransformationPass):
                 logger.debug("swap scores: %s", swap_scores)
                 logger.debug("best swap: %s", best_swap)
                 logger.debug("qubits decay: %s", self.qubits_decay)
+
+        # print("Loop count: ", loop_count)
+        print("Loop time: ", loop_time)
+        # print("execute: ", loop_time[0])
 
         self.property_set["final_layout"] = current_layout
         if not self.fake_run:
