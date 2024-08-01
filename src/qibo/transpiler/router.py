@@ -11,7 +11,7 @@ from qibo.models import Circuit
 from qibo.transpiler._exceptions import ConnectivityError
 from qibo.transpiler.abstract import Router
 from qibo.transpiler.blocks import Block, CircuitBlocks
-
+import time
 
 def assert_connectivity(connectivity: nx.Graph, circuit: Circuit):
     """Assert if a circuit can be executed on Hardware.
@@ -626,6 +626,11 @@ class Sabre(Router):
             Defaults to math:`10^{-3}`.
         seed (int, optional): seed for the candidate random choice as tiebraker.
             Defaults to ``None``.
+        swap_threshold (float, optional): limits the number of added SWAPs in every routing iteration.
+            This threshold is multiplied by the length of the longest path in the circuit connectivity.
+            If the number of added SWAPs exceeds the threshold before a gate is routed,
+            shortestpath routing is applied.
+            Defaults to :math:`1.5`.
 
     References:
         1. G. Li, Y. Ding, and Y. Xie,
@@ -639,12 +644,14 @@ class Sabre(Router):
         lookahead: int = 2,
         decay_lookahead: float = 0.6,
         delta: float = 0.001,
+        swap_threshold: float = 1.5,
         seed: Optional[int] = None,
     ):
         self.connectivity = connectivity
         self.lookahead = lookahead
         self.decay = decay_lookahead
         self.delta = delta
+        self.swap_threshold = swap_threshold
         self._delta_register = None
         self._dist_matrix = None
         self._dag = None
@@ -652,9 +659,19 @@ class Sabre(Router):
         self.circuit = None
         self._memory_map = None
         self._final_measurements = None
-        self._added_swaps = 0
+
+
+        self._temporary_added_swaps = 0
         self._saved_circuit = None
+
+        self._temp_swaps_list = []
+        self._saved_map = None
+
+        
+        self._reset_count = 0
         random.seed(seed)
+
+        self.check_time = [0, 0, 0, 0, 0, 0, 0, 0]
 
     def __call__(self, circuit: Circuit, initial_layout: dict):
         """Route the circuit.
@@ -667,22 +684,51 @@ class Sabre(Router):
             (:class:`qibo.models.circuit.Circuit`, dict): routed circuit and final layout.
         """
         self._preprocessing(circuit=circuit, initial_layout=initial_layout)
+        # print the time of self._preprocessing
+        time_preprocessing = time.time()
+        self._preprocessing(circuit=circuit, initial_layout=initial_layout)
+        print('Time of preprocessing:', time.time()-time_preprocessing)
+
         self._saved_circuit = deepcopy(self.circuit)
         longest_path = np.max(self._dist_matrix)
 
+        # loop_count = [0, 0]
+        loop_time = [0, 0, 0]
         while self._dag.number_of_nodes() != 0:
+            time_check_execute = time.time()
             execute_block_list = self._check_execution()
+            # print('Time of check_execute:', time.time()-time_check_execute)
+            loop_time[2] += time.time()-time_check_execute
             if execute_block_list is not None:
+                time_execute_blocks = time.time()
                 self._execute_blocks(execute_block_list)
+                
+                loop_time[0] += time.time()-time_execute_blocks
+                # print('Time of execute_blocks:', time.time()-time_execute_blocks)
+                # loop_count[0] += 1
             else:
+                time_find_new_mapping = time.time()
                 self._find_new_mapping()
-
+                # print('Time of find_new_mapping:', time.time()-time_find_new_mapping)
+                # loop_count[1] += 1
+                loop_time[1] += time.time()-time_find_new_mapping
 
             # If the number of added swaps is too high, the algorithm is stuck.
             # Reset the circuit to the last saved state and make the nearest gate executable by manually adding SWAPs.
-            if self._added_swaps > 1.5 * longest_path:  # threshold is arbitrary
+            if (
+                self._temporary_added_swaps > self.swap_threshold * longest_path
+            ):  # threshold is arbitrary
+                print("reset")
                 self.circuit = deepcopy(self._saved_circuit)
-                self._route_to_nearest_gate()
+                self._shortest_path_routing()
+                self._reset_count += 1
+
+        # print("loop count:", loop_count)
+        print("loop time:", loop_time)
+        print("check_execute time:", self.check_time[0], self.check_time[1], self.check_time[2], self.check_time[3])
+        # print("execute_blocks time:", loop_time[0])
+        self.check_time = [0, 0, 0, 0, 0, 0, 0, 0]
+
 
         circuit_kwargs = circuit.init_kwargs
         circuit_kwargs["wire_names"] = list(initial_layout.keys())
@@ -792,8 +838,7 @@ class Sabre(Router):
         for qubit in self.circuit.logical_to_physical(best_candidate, index=True):
             self._delta_register[qubit] += self.delta
         self.circuit.update(best_candidate)
-        self._added_swaps += 1
-
+        self._temporary_added_swaps += 1
 
     def _compute_cost(self, candidate: int):
         """Compute the cost associated to a possible SWAP candidate."""
@@ -882,40 +927,61 @@ class Sabre(Router):
         Args:
             blocklist (list): list of blocks.
         """
+        time_blocklist = time.time()
         for block_id in blocklist:
             block = self.circuit.circuit_blocks.search_by_index(block_id)
             self.circuit.execute_block(block)
             self._dag.remove_node(block_id)
+        self.check_time[0] += time.time()-time_blocklist
+
+        time_update_dag_layers = time.time()
         self._update_dag_layers()
+        self.check_time[1] += time.time()-time_update_dag_layers
+
+        time_update_front_layer = time.time()
         self._update_front_layer()
+        self.check_time[2] += time.time()-time_update_front_layer
+
         self._memory_map = []
         self._delta_register = [1.0 for _ in self._delta_register]
-        self._added_swaps = 0
+        self._temporary_added_swaps = 0
+        
+        time_reset_memory = time.time()
+        
         self._saved_circuit = deepcopy(self.circuit)
-    
-    def _route_to_nearest_gate(self):
-        """Route the circuit to the nearest gate by adding SWAPs.
+        self.check_time[3] += time.time()-time_reset_memory
+
+    def _shortest_path_routing(self):
+        """Route a gate in the front layer using the shortest path. This method is executed when the standard SABRE fails to find an optimized solution.
 
         Method works in-place.
         """
 
         min_distance = float("inf")
-        shortest_path = None
+        shortest_path_qubits = None
 
         for block in self._front_layer:
-            Q1 = self.circuit.get_physical_qubits(block)[0]
-            Q2 = self.circuit.get_physical_qubits(block)[1]
-            path = nx.bidirectional_shortest_path(self.connectivity, Q1, Q2)
-            
-            # Between the gates in the front layer, the one requiring the minimum #SWAPs is selected
-            if len(path) < min_distance:
-                min_distance = len(path)
-                shortest_path = path
+            q1 = self.circuit.get_physical_qubits(block)[0]
+            q2 = self.circuit.get_physical_qubits(block)[1]
+            distance = self._dist_matrix[q1, q2]
+
+            if distance < min_distance:
+                min_distance = distance
+                shortest_path_qubits = [q1, q2]
+
+        shortest_path = nx.bidirectional_shortest_path(
+            self.connectivity, shortest_path_qubits[0], shortest_path_qubits[1]
+        )
 
         # Q1 is moved
-        swaps = [(self.circuit.physical_to_logical(shortest_path[i]),
-                  self.circuit.physical_to_logical(shortest_path[i+1])) for i in range(len(shortest_path)-2)]
-        
+        swaps = [
+            (
+                self.circuit.physical_to_logical(shortest_path[i]),
+                self.circuit.physical_to_logical(shortest_path[i + 1]),
+            )
+            for i in range(len(shortest_path) - 2)
+        ]
+
         for swap in swaps:
             self.circuit.update(swap)
 

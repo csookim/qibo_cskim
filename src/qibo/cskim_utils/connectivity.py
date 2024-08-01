@@ -1,7 +1,7 @@
 import networkx as nx
 import numpy as np
 
-def star_connectivity():
+def star_connectivity_nx():
     """
     Returns a star graph with 5 nodes and 4 edges.
     """
@@ -125,14 +125,12 @@ def iqm_connectivity_nx():
     Returns the connectivity graph of the IQM-20 chip architecture (For Qibo).
     """
     g = nx.Graph()
-    edges = [
-        (1, 2), (1, 4), (3, 4), (2, 5), (4, 5),
-        (5, 6), (10, 11), (6, 7), (7, 12), (11, 12),
-        (12, 17), (16, 17), (16, 20), (15, 16), (19, 20),
-        (11, 16), (15, 19), (18, 19), (14, 18), (14, 15),
-        (13, 14), (10, 15), (9, 14), (8, 13), (9, 10), 
-        (8, 9), (3, 8), (6, 11), (5, 10), (4, 9)
-    ]
+    edges = [(0, 1), (0, 3), (2, 3), (1, 4), (3, 4), (4, 5),
+            (9, 10), (5, 6), (6, 11), (10, 11), (11, 16), (15, 16), 
+            (15, 19), (14, 15), (18, 19), (10, 15), (14, 18), (17, 18), 
+            (13, 17), (13, 14), (12, 13), (9, 14), (8, 13), (7, 12), 
+            (8, 9), (7, 8), (2, 7), (5, 10), (4, 9), (3, 8)]
+
     g.add_edges_from(edges)
     # nx.draw(g, with_labels=True)
     return g
@@ -141,16 +139,42 @@ def iqm_connectivity_cmap():
     """
     Returns the connectivity coupling graph of the IQM-20 chip architecture (For Qiskit).
     """
-    edges = [
-        (1, 2), (1, 4), (3, 4), (2, 5), (4, 5),
-        (5, 6), (10, 11), (6, 7), (7, 12), (11, 12),
-        (12, 17), (16, 17), (16, 20), (15, 16), (19, 20),
-        (11, 16), (15, 19), (18, 19), (14, 18), (14, 15),
-        (13, 14), (10, 15), (9, 14), (8, 13), (9, 10), 
-        (8, 9), (3, 8), (6, 11), (5, 10), (4, 9)
-    ]
+    edges = [(0, 1), (0, 3), (2, 3), (1, 4), (3, 4), (4, 5),
+            (9, 10), (5, 6), (6, 11), (10, 11), (11, 16), (15, 16), 
+            (15, 19), (14, 15), (18, 19), (10, 15), (14, 18), (17, 18), 
+            (13, 17), (13, 14), (12, 13), (9, 14), (8, 13), (7, 12), 
+            (8, 9), (7, 8), (2, 7), (5, 10), (4, 9), (3, 8)]
+    
     graph_list = [[edges[i][0], edges[i][1]] for i in range(len(edges))]
     graph_list_rev = [[edges[i][1], edges[i][0]] for i in range(len(edges))]
     graph_list.extend(graph_list_rev)
     # print(len(graph_list))
+    return graph_list
+
+
+def nakamura_connectivitiy_nx():
+    g = nx.Graph()
+    edges = []
+    for i in range(16):
+        if i % 4 != 3:
+            edges.append((i, i + 1))
+        if i < 12:
+            edges.append((i, i + 4))
+
+    g.add_edges_from(edges)
+    return g
+
+def nakamura_connectivity_cmap():
+    graph_list = []
+    edges = []
+    for i in range(16):
+        if i % 4 != 3:
+            edges.append((i, i + 1))
+        if i < 12:
+            edges.append((i, i + 4))
+
+    for e in edges:
+        graph_list.append([e[0], e[1]])
+        graph_list.append([e[1], e[0]])
+
     return graph_list
